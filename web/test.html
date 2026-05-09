@@ -99,6 +99,24 @@ runTests(function () {
   assertEq('framesToSeconds 0 @24', framesToSeconds(0, 24), 0);
   assertEq('framesToSeconds 1 @24', framesToSeconds(1, 24), 1/24);
   assertEq('framesToSeconds 5 @25', framesToSeconds(5, 25), 0.2);
+
+  // secondsToTc
+  const { secondsToTc } = QCLongPlay;
+  assertEq('secondsToTc 0 @24', secondsToTc(0, 24), '00:00:00:00');
+  assertEq('secondsToTc 3600 @24', secondsToTc(3600, 24), '01:00:00:00');
+  assertEq('secondsToTc 0.5 @24', secondsToTc(0.5, 24), '00:00:00:12');
+  assertEq('secondsToTc 1 @25', secondsToTc(1, 25), '00:00:01:00');
+  assertEq('secondsToTc 5025.25 @24',
+    secondsToTc(5025.25, 24),
+    '01:23:45:06');
+  // Floating-point guard: a value that rounds to fps frames must roll over to the next second.
+  assertEq('secondsToTc fp guard: 0.99999999 @24', secondsToTc(0.99999999, 24), '00:00:01:00');
+  assertEq('secondsToTc round-trip 01:23:45:06 @24',
+    secondsToTc(QCLongPlay.tcToSeconds('01:23:45:06', 24), 24),
+    '01:23:45:06');
+  assertEq('secondsToTc round-trip 23:59:59:23 @24',
+    secondsToTc(QCLongPlay.tcToSeconds('23:59:59:23', 24), 24),
+    '23:59:59:23');
 });
 </script>
 </body>

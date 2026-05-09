@@ -22,9 +22,26 @@
     return frames / fps;
   }
 
+  function secondsToTc(seconds, fps) {
+    const whole = Math.floor(seconds);
+    const frac = seconds - whole;
+    let frames = Math.round(frac * fps);
+    let total = whole;
+    if (frames >= fps) {
+      frames = 0;
+      total += 1;
+    }
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(h)}:${pad(m)}:${pad(s)}:${pad(frames)}`;
+  }
+
   global.QCLongPlay = {
     _internal: { TC_PATTERN, validateFps },
     tcToSeconds,
     framesToSeconds,
+    secondsToTc,
   };
 })(window);
