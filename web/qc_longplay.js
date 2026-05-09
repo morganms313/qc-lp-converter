@@ -178,6 +178,32 @@
     return out;
   }
 
+  function processWorkbook(workbook, opts) {
+    opts = opts || {};
+    const sheetName = opts.sheetName != null ? opts.sheetName : 'QC Report';
+    const fps = opts.fps != null ? opts.fps : 24;
+    const lpStartTc = opts.lpStartTc != null ? opts.lpStartTc : '01:00:00:00';
+    const dropMarkers = opts.dropMarkers !== false;
+
+    if (typeof XLSX === 'undefined') {
+      throw new Error('SheetJS (XLSX) is not loaded. Make sure vendor/xlsx.full.min.js is included.');
+    }
+    if (workbook.SheetNames.indexOf(sheetName) === -1) {
+      throw new Error(
+        `Sheet '${sheetName}' not found. Available sheets: ${workbook.SheetNames.join(', ')}`
+      );
+    }
+
+    const sheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: null });
+    const converted = processRows(rows, { fps, lpStartTc, dropMarkers });
+
+    const newSheet = XLSX.utils.aoa_to_sheet(converted);
+    const newWorkbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(newWorkbook, newSheet, `${sheetName} LongPlay`);
+    return newWorkbook;
+  }
+
   global.QCLongPlay = {
     _internal: { TC_PATTERN, validateFps },
     tcToSeconds,
@@ -186,5 +212,6 @@
     buildIntervals,
     convertTc,
     processRows,
+    processWorkbook,
   };
 })(window);

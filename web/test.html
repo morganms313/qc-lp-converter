@@ -304,6 +304,46 @@ runTests(function () {
   assertThrows('processRows: no reels throws',
     () => processRows([[null, null, null, 'unrelated']], { fps: 24, lpStartTc: '01:00:00:00' }),
     'No reel boundaries found');
+
+  // processWorkbook
+  const { processWorkbook } = QCLongPlay;
+
+  function makeWorkbook(rows, sheetName) {
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    return wb;
+  }
+
+  const wbRows = [
+    [null, null, null, 'Header'],
+    [null, '01:00:00:00', null, 'Program Start - Reel 1'],
+    [null, '01:05:00:00', null, 'note'],
+    [null, '01:10:00:00', null, 'Program End - Reel 1'],
+  ];
+  const wb = makeWorkbook(wbRows, 'QC Report');
+
+  const newWb = processWorkbook(wb, { sheetName: 'QC Report', fps: 24, lpStartTc: '01:00:00:00' });
+  assertEq('processWorkbook: output sheet name',
+    newWb.SheetNames[0], 'QC Report LongPlay');
+
+  const outSheet = newWb.Sheets['QC Report LongPlay'];
+  const outRows = XLSX.utils.sheet_to_json(outSheet, { header: 1, raw: false, defval: null });
+  assertEq('processWorkbook: 2 output rows', outRows.length, 2);
+  assertEq('processWorkbook: row 0 desc', outRows[0][3], 'note');
+  assertEq('processWorkbook: row 0 tc converted', outRows[0][1], '01:05:00:00');
+  assertEq('processWorkbook: final program end desc', outRows[1][3], 'Program End - Reel 1');
+  assertEq('processWorkbook: final program end forced tc', outRows[1][1], '01:10:00:01');
+
+  // Error: sheet not found
+  assertThrows('processWorkbook: missing sheet throws',
+    () => processWorkbook(wb, { sheetName: 'Nope', fps: 24, lpStartTc: '01:00:00:00' }),
+    "Sheet 'Nope' not found");
+
+  // Default options
+  const defaultsResult = processWorkbook(wb);
+  assertEq('processWorkbook: defaults to QC Report sheet',
+    defaultsResult.SheetNames[0], 'QC Report LongPlay');
 });
 </script>
 </body>
