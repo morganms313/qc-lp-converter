@@ -1,3 +1,70 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><title>QC Long Play Converter</title></head>
-<body><p>Placeholder — filled in Task 8.</p></body></html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QC Long Play Converter</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>QC Long Play Converter</h1>
+    <p>Convert reel-based QC timecodes to a continuous long play timeline.</p>
+  </header>
+
+  <div id="dropzone" class="dropzone">
+    <div class="dropzone-text">Drop a .xlsx file here</div>
+    <div class="dropzone-hint">or click to browse</div>
+    <input type="file" id="file-input" accept=".xlsx" hidden>
+  </div>
+
+  <div id="file-info" class="card file-info" hidden>
+    <span id="file-info-text"></span>
+    <button type="button" class="change-link" id="change-file">Change file</button>
+  </div>
+
+  <button type="button" class="btn btn-primary" id="convert-btn" disabled>Convert</button>
+
+  <div id="status-panel" class="status-panel card">
+    <p id="status-message" class="status-message"></p>
+    <div id="status-details"></div>
+  </div>
+
+  <button type="button" class="btn btn-primary" id="download-btn" hidden>Download converted file</button>
+
+  <details>
+    <summary>Advanced settings</summary>
+    <div class="advanced-body">
+      <div class="field">
+        <label for="sheet-name">Sheet name</label>
+        <input type="text" id="sheet-name" value="QC Report">
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="fps">FPS</label>
+          <select id="fps">
+            <option value="24" selected>24</option>
+            <option value="25">25</option>
+            <option value="30">30</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="lp-start">LP start TC</label>
+          <input type="text" id="lp-start" value="01:00:00:00" placeholder="HH:MM:SS:FF">
+          <div id="lp-start-error" class="field-error" hidden></div>
+        </div>
+      </div>
+      <div class="checkbox-field">
+        <input type="checkbox" id="keep-markers">
+        <label for="keep-markers">Keep "Program Start/End" markers in output</label>
+      </div>
+    </div>
+  </details>
+</main>
+
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="qc_longplay.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
