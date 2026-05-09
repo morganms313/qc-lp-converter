@@ -79,7 +79,26 @@
 
 <script>
 runTests(function () {
-  assert('test harness works', true);
+  const { tcToSeconds, framesToSeconds } = QCLongPlay;
+
+  // tcToSeconds
+  assertEq('tcToSeconds 00:00:00:00 @24', tcToSeconds('00:00:00:00', 24), 0);
+  assertEq('tcToSeconds 01:00:00:00 @24', tcToSeconds('01:00:00:00', 24), 3600);
+  assertEq('tcToSeconds 00:00:00:12 @24', tcToSeconds('00:00:00:12', 24), 0.5);
+  assertEq('tcToSeconds 00:00:01:00 @25', tcToSeconds('00:00:01:00', 25), 1);
+  assertEq('tcToSeconds 01:23:45:06 @24',
+    tcToSeconds('01:23:45:06', 24),
+    1*3600 + 23*60 + 45 + 6/24);
+  assertEq('tcToSeconds whitespace tolerated', tcToSeconds('  00:00:01:00  ', 24), 1);
+  assertEq('tcToSeconds invalid format → null', tcToSeconds('1:2:3:4', 24), null);
+  assertEq('tcToSeconds non-string → null', tcToSeconds(null, 24), null);
+  assertEq('tcToSeconds non-string number → null', tcToSeconds(42, 24), null);
+
+  // framesToSeconds
+  assertEq('framesToSeconds 24 @24', framesToSeconds(24, 24), 1);
+  assertEq('framesToSeconds 0 @24', framesToSeconds(0, 24), 0);
+  assertEq('framesToSeconds 1 @24', framesToSeconds(1, 24), 1/24);
+  assertEq('framesToSeconds 5 @25', framesToSeconds(5, 25), 0.2);
 });
 </script>
 </body>
