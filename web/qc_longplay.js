@@ -102,11 +102,25 @@
     return { intervals, firstStart, lastEnd };
   }
 
+  function convertTc(tcStr, intervals, fps) {
+    const td = tcToSeconds(tcStr, fps);
+    if (td === null) return tcStr;
+    for (const iv of intervals) {
+      if (iv.reelStart <= td && td <= iv.reelEnd) {
+        const offset = td - iv.reelStart;
+        const correctionFrames = Math.max(0, iv.reel - 1);
+        return secondsToTc(iv.lpStart + offset + framesToSeconds(correctionFrames, fps), fps);
+      }
+    }
+    return null;
+  }
+
   global.QCLongPlay = {
     _internal: { TC_PATTERN, validateFps },
     tcToSeconds,
     framesToSeconds,
     secondsToTc,
     buildIntervals,
+    convertTc,
   };
 })(window);

@@ -186,6 +186,45 @@ runTests(function () {
   assertEq('out-of-order reels: sorted', rReorder.intervals.map(i => i.reel), [1, 2]);
   assertEq('out-of-order: reel 1 lpStart', rReorder.intervals[0].lpStart, 3600);
   assertEq('out-of-order: reel 2 lpStart = 3600 + 600', rReorder.intervals[1].lpStart, 4200);
+
+  // convertTc
+  const { convertTc } = QCLongPlay;
+  const cMulti = buildIntervals(makeRows([
+    { n: 1, start: '01:00:00:00', end: '01:10:00:00' },
+    { n: 2, start: '02:00:00:00', end: '02:05:00:00' },
+    { n: 3, start: '03:00:00:00', end: '03:07:30:00' },
+  ]), { fps: 24, lpStartTc: '01:00:00:00' });
+
+  // Reel 1: no correction, +0f
+  assertEq('reel 1 start → lp start',
+    convertTc('01:00:00:00', cMulti.intervals, 24), '01:00:00:00');
+  assertEq('reel 1 mid (+5min) → lp 01:05:00:00',
+    convertTc('01:05:00:00', cMulti.intervals, 24), '01:05:00:00');
+  assertEq('reel 1 end (closed interval, kept) → lp 01:10:00:00',
+    convertTc('01:10:00:00', cMulti.intervals, 24), '01:10:00:00');
+
+  // Reel 2: +1f correction
+  // 02:00:00:00 in source maps to 01:10:00:00 + 1f in LP
+  assertEq('reel 2 start → lp 01:10:00:00 + 1f',
+    convertTc('02:00:00:00', cMulti.intervals, 24), '01:10:00:01');
+  // 02:05:00:00 = end of reel 2 → lp end = 01:15:00:00 + 1f
+  assertEq('reel 2 end → lp 01:15:00:01',
+    convertTc('02:05:00:00', cMulti.intervals, 24), '01:15:00:01');
+
+  // Reel 3: +2f correction
+  // 03:00:00:00 → lp 01:15:00:00 + 2f
+  assertEq('reel 3 start → lp 01:15:00:02',
+    convertTc('03:00:00:00', cMulti.intervals, 24), '01:15:00:02');
+
+  // Out of range → null
+  assertEq('out of range tc → null',
+    convertTc('00:30:00:00', cMulti.intervals, 24), null);
+  assertEq('between reels (no overlap) → null',
+    convertTc('01:30:00:00', cMulti.intervals, 24), null);
+
+  // Invalid TC string → returned unchanged (matches Python's convert_tc_corrected)
+  assertEq('invalid tc → returned unchanged',
+    convertTc('not-a-tc', cMulti.intervals, 24), 'not-a-tc');
 });
 </script>
 </body>
