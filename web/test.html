@@ -1,3 +1,86 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><title>QC LP tests</title></head>
-<body><p>Placeholder — filled in Task 2.</p></body></html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>QC Long Play Converter — Tests</title>
+<style>
+  body { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+         background: #0E1014; color: #E6E8EC; padding: 24px; }
+  h1 { font-size: 18px; margin: 0 0 16px; }
+  .summary { padding: 8px 12px; border-radius: 6px; margin-bottom: 16px;
+             display: inline-block; font-weight: 600; }
+  .summary.pass { background: rgba(93, 190, 138, 0.15); color: #5DBE8A; }
+  .summary.fail { background: rgba(232, 99, 90, 0.15); color: #E8635A; }
+  .case { padding: 4px 0; }
+  .case.pass::before { content: "✓ "; color: #5DBE8A; }
+  .case.fail::before { content: "✗ "; color: #E8635A; }
+  .case.fail { color: #E8635A; }
+  .detail { color: #8A91A0; padding-left: 18px; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>QC Long Play Converter — Tests</h1>
+<div id="summary" class="summary"></div>
+<div id="cases"></div>
+
+<script src="vendor/xlsx.full.min.js"></script>
+<script src="qc_longplay.js"></script>
+<script>
+(function () {
+  const cases = document.getElementById('cases');
+  const summary = document.getElementById('summary');
+  let passed = 0;
+  let failed = 0;
+
+  function record(label, ok, detail) {
+    const div = document.createElement('div');
+    div.className = 'case ' + (ok ? 'pass' : 'fail');
+    div.textContent = label;
+    cases.appendChild(div);
+    if (!ok && detail) {
+      const d = document.createElement('div');
+      d.className = 'detail';
+      d.textContent = detail;
+      cases.appendChild(d);
+    }
+    if (ok) passed++; else failed++;
+  }
+
+  window.assert = function (label, condition, detail) {
+    record(label, !!condition, detail);
+  };
+  window.assertEq = function (label, actual, expected) {
+    const ok = JSON.stringify(actual) === JSON.stringify(expected);
+    record(label, ok, ok ? null : `expected ${JSON.stringify(expected)}, got ${JSON.stringify(actual)}`);
+  };
+  window.assertThrows = function (label, fn, messageContains) {
+    try {
+      fn();
+      record(label, false, 'expected to throw, but did not');
+    } catch (e) {
+      if (messageContains && !String(e.message).includes(messageContains)) {
+        record(label, false, `threw '${e.message}', expected to contain '${messageContains}'`);
+      } else {
+        record(label, true);
+      }
+    }
+  };
+
+  window.runTests = function (tests) {
+    tests();
+    const total = passed + failed;
+    summary.textContent = `${passed} / ${total} passed${failed ? ` — ${failed} failed` : ''}`;
+    summary.className = 'summary ' + (failed ? 'fail' : 'pass');
+    window.__testsPassed = failed === 0;
+    window.__testCounts = { passed, failed, total };
+  };
+})();
+</script>
+
+<script>
+runTests(function () {
+  assert('test harness works', true);
+});
+</script>
+</body>
+</html>
