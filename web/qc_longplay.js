@@ -115,6 +115,69 @@
     return null;
   }
 
+  function processRows(rows, opts) {
+    opts = opts || {};
+    const fps = opts.fps != null ? opts.fps : 24;
+    const lpStartTc = opts.lpStartTc != null ? opts.lpStartTc : '01:00:00:00';
+    const dropMarkers = opts.dropMarkers !== false; // default true
+
+    validateFps(fps);
+
+    const built = buildIntervals(rows, { fps, lpStartTc });
+    const intervals = built.intervals;
+    const firstStart = built.firstStart;
+    const lastEnd = built.lastEnd;
+
+    const lastInterval = intervals[intervals.length - 1];
+    const lastReelCorrection = framesToSeconds(Math.max(0, lastInterval.reel - 1), fps);
+    const programEndLpTc = secondsToTc(
+      lastInterval.lpStart + lastInterval.duration + lastReelCorrection + framesToSeconds(1, fps),
+      fps
+    );
+
+    const tcCols = [1, 2];
+    const out = [];
+
+    for (let idx = firstStart; idx <= lastEnd; idx++) {
+      const src = rows[idx] || [];
+      const row = src.slice();
+
+      let changed = false;
+      for (const c of tcCols) {
+        const v = row[c];
+        if (typeof v === 'string' && TC_PATTERN.test(v)) {
+          const newTc = convertTc(v, intervals, fps);
+          row[c] = newTc;
+          if (newTc !== null) changed = true;
+        }
+      }
+
+      const desc = String(row[3] != null ? row[3] : '');
+      const isMarker = desc.indexOf('Program Start - Reel') !== -1 ||
+                       desc.indexOf('Program End - Reel') !== -1;
+      const isFinalProgramEnd = desc.indexOf('Program End') !== -1 && idx === lastEnd;
+
+      if (isFinalProgramEnd) {
+        for (const c of tcCols) row[c] = programEndLpTc;
+        out.push(row);
+        continue;
+      }
+
+      if (dropMarkers && isMarker) continue;
+
+      // hasContent: changed OR any of cols 3-6 is non-null/non-undefined
+      let hasContent = changed;
+      if (!hasContent) {
+        for (const c of [3, 4, 5, 6]) {
+          if (row[c] != null) { hasContent = true; break; }
+        }
+      }
+      if (hasContent) out.push(row);
+    }
+
+    return out;
+  }
+
   global.QCLongPlay = {
     _internal: { TC_PATTERN, validateFps },
     tcToSeconds,
@@ -122,5 +185,6 @@
     secondsToTc,
     buildIntervals,
     convertTc,
+    processRows,
   };
 })(window);
