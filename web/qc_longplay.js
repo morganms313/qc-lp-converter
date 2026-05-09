@@ -38,10 +38,75 @@
     return `${pad(h)}:${pad(m)}:${pad(s)}:${pad(frames)}`;
   }
 
+  function buildIntervals(rows, opts) {
+    opts = opts || {};
+    const fps = opts.fps != null ? opts.fps : 24;
+    const lpStartTc = opts.lpStartTc != null ? opts.lpStartTc : '01:00:00:00';
+    const descCol = opts.descCol != null ? opts.descCol : 3;
+    const tcCol = opts.tcCol != null ? opts.tcCol : 1;
+
+    validateFps(fps);
+
+    const reelBounds = {};
+    let current = null;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i] || [];
+      const desc = String(row[descCol] != null ? row[descCol] : '');
+      const tc = row[tcCol];
+      if (desc.indexOf('Program Start - Reel') !== -1) {
+        const m = /Reel\s*(\d+)/.exec(desc);
+        if (m && typeof tc === 'string') {
+          const r = parseInt(m[1], 10);
+          reelBounds[r] = { startTc: tc, endTc: null, startRow: i, endRow: null };
+          current = r;
+        }
+      } else if (desc.indexOf('Program End - Reel') !== -1 && current !== null) {
+        if (typeof tc === 'string') {
+          reelBounds[current].endTc = tc;
+          reelBounds[current].endRow = i;
+        }
+        current = null;
+      }
+    }
+
+    if (Object.keys(reelBounds).length === 0) {
+      throw new Error(
+        "No reel boundaries found. Expected rows with " +
+        "'Program Start - Reel X' / 'Program End - Reel X' in column 4 (0-based index 3)."
+      );
+    }
+
+    let lpCursor = tcToSeconds(lpStartTc, fps);
+    if (lpCursor === null) {
+      throw new Error(`Invalid LP start TC: ${lpStartTc}`);
+    }
+
+    const intervals = [];
+    const sortedReels = Object.keys(reelBounds).map(Number).sort((a, b) => a - b);
+    for (const r of sortedReels) {
+      const rs = tcToSeconds(reelBounds[r].startTc, fps);
+      const re = tcToSeconds(reelBounds[r].endTc, fps);
+      if (rs === null || re === null) {
+        throw new Error(`Invalid timecode for Reel ${r} boundaries.`);
+      }
+      const dur = re - rs;
+      intervals.push({ reel: r, reelStart: rs, reelEnd: re, lpStart: lpCursor, duration: dur });
+      lpCursor += dur;
+    }
+
+    const allBounds = Object.values(reelBounds);
+    const firstStart = Math.min.apply(null, allBounds.map(b => b.startRow));
+    const lastEnd = Math.max.apply(null, allBounds.map(b => b.endRow));
+
+    return { intervals, firstStart, lastEnd };
+  }
+
   global.QCLongPlay = {
     _internal: { TC_PATTERN, validateFps },
     tcToSeconds,
     framesToSeconds,
     secondsToTc,
+    buildIntervals,
   };
 })(window);

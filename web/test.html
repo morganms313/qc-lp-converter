@@ -117,6 +117,75 @@ runTests(function () {
   assertEq('secondsToTc round-trip 23:59:59:23 @24',
     secondsToTc(QCLongPlay.tcToSeconds('23:59:59:23', 24), 24),
     '23:59:59:23');
+
+  // buildIntervals
+  const { buildIntervals } = QCLongPlay;
+
+  // Helper: build a 2D array fixture matching the expected layout.
+  // Columns: 0=note(blank), 1=src tc, 2=dst tc, 3=descriptor.
+  function makeRows(reels, opts) {
+    opts = opts || {};
+    const rows = [[null, null, null, 'Header']];
+    for (const r of reels) {
+      rows.push([null, r.start, null, `Program Start - Reel ${r.n}`]);
+      if (r.notes) rows.push(...r.notes.map(tc => [null, tc, null, 'note']));
+      rows.push([null, r.end, null, `Program End - Reel ${r.n}`]);
+    }
+    return rows;
+  }
+
+  // Single reel
+  const single = makeRows([{ n: 1, start: '01:00:00:00', end: '01:10:00:00' }]);
+  const r1 = buildIntervals(single, { fps: 24, lpStartTc: '01:00:00:00' });
+  assertEq('single reel: 1 interval', r1.intervals.length, 1);
+  assertEq('single reel: reel num', r1.intervals[0].reel, 1);
+  assertEq('single reel: lpStart', r1.intervals[0].lpStart, 3600);
+  assertEq('single reel: duration', r1.intervals[0].duration, 600);
+  assertEq('single reel: firstStart row 1', r1.firstStart, 1);
+  assertEq('single reel: lastEnd row 2', r1.lastEnd, 2);
+
+  // Multi reel — LP cursor advances, durations preserved
+  const multi = makeRows([
+    { n: 1, start: '01:00:00:00', end: '01:10:00:00' },
+    { n: 2, start: '02:00:00:00', end: '02:05:00:00' },
+    { n: 3, start: '03:00:00:00', end: '03:07:30:00' },
+  ]);
+  const r3 = buildIntervals(multi, { fps: 24, lpStartTc: '01:00:00:00' });
+  assertEq('multi: 3 intervals', r3.intervals.length, 3);
+  assertEq('multi: reel 1 lpStart', r3.intervals[0].lpStart, 3600);
+  assertEq('multi: reel 2 lpStart = 3600 + 600', r3.intervals[1].lpStart, 4200);
+  assertEq('multi: reel 3 lpStart = 4200 + 300', r3.intervals[2].lpStart, 4500);
+
+  // Reel boundaries detected even with notes between
+  const withNotes = makeRows([
+    { n: 1, start: '01:00:00:00', end: '01:10:00:00',
+      notes: ['01:01:00:00', '01:05:30:00'] },
+  ]);
+  const rNotes = buildIntervals(withNotes, { fps: 24, lpStartTc: '01:00:00:00' });
+  assertEq('with notes: still 1 reel', rNotes.intervals.length, 1);
+
+  // Error: no reel boundaries
+  assertThrows('no reels throws',
+    () => buildIntervals([[null, null, null, 'unrelated']], { fps: 24, lpStartTc: '01:00:00:00' }),
+    'No reel boundaries found');
+
+  // Error: invalid FPS
+  assertThrows('invalid FPS throws',
+    () => buildIntervals(single, { fps: 0, lpStartTc: '01:00:00:00' }),
+    'FPS must be a positive number');
+
+  // Reels detected out of order should be sorted
+  const reordered = [
+    [null, null, null, 'Header'],
+    [null, '02:00:00:00', null, 'Program Start - Reel 2'],
+    [null, '02:05:00:00', null, 'Program End - Reel 2'],
+    [null, '01:00:00:00', null, 'Program Start - Reel 1'],
+    [null, '01:10:00:00', null, 'Program End - Reel 1'],
+  ];
+  const rReorder = buildIntervals(reordered, { fps: 24, lpStartTc: '01:00:00:00' });
+  assertEq('out-of-order reels: sorted', rReorder.intervals.map(i => i.reel), [1, 2]);
+  assertEq('out-of-order: reel 1 lpStart', rReorder.intervals[0].lpStart, 3600);
+  assertEq('out-of-order: reel 2 lpStart = 3600 + 600', rReorder.intervals[1].lpStart, 4200);
 });
 </script>
 </body>
