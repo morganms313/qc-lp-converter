@@ -72,10 +72,12 @@ header p {
   font-size: 16px;
   color: var(--text);
   margin-bottom: 4px;
+  pointer-events: none;
 }
 .dropzone-hint {
   font-size: 13px;
   color: var(--muted);
+  pointer-events: none;
 }
 
 .file-info {

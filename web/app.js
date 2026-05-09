@@ -129,7 +129,12 @@
 
     try {
       const buffer = await selectedFile.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: 'array' });
+      let workbook;
+      try {
+        workbook = XLSX.read(buffer, { type: 'array' });
+      } catch (_) {
+        throw new Error("Couldn't read this file. Make sure it's a valid Excel workbook.");
+      }
 
       const opts = {
         sheetName: sheetNameInput.value.trim() || 'QC Report',
