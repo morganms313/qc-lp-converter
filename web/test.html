@@ -398,6 +398,40 @@ runTests(function () {
   const defaultsResult = processWorkbook(wb);
   assertEq('processWorkbook: defaults to QC Report sheet',
     defaultsResult.SheetNames[0], 'QC Report LongPlay');
+
+  // Understated worksheet dimension (the Alula QC report bug): some exports
+  // declare a too-small <dimension>, so the markers sit BELOW the declared
+  // range. sheetToRows must recompute the range from the actual cells.
+  const { sheetToRows, fullSheetRange } = QCLongPlay;
+  (function () {
+    const fullRows = [
+      [null, null, null, 'Header'],
+      [null, '01:00:00:00', null, 'note above declared range'],
+      [null, '01:00:00:00', null, 'Program Start - Reel 1'],
+      [null, '01:05:00:00', null, 'finding'],
+      [null, '01:10:00:00', null, 'Program End - Reel 1'],
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(fullRows);
+    // Sabotage the declared dimension to only cover the first 2 rows.
+    ws['!ref'] = 'A1:D2';
+    // Reading by the (wrong) declared range would lose the markers entirely.
+    const naive = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: null });
+    assertEq('understated dim: naive read truncates to 2 rows', naive.length, 2);
+    // sheetToRows recovers the full range.
+    assertEq('understated dim: fullSheetRange recomputes to A1:D5',
+      fullSheetRange(ws), 'A1:D5');
+    const recovered = sheetToRows(ws);
+    assertEq('understated dim: sheetToRows reads all 5 rows', recovered.length, 5);
+    const built = buildIntervals(recovered, { fps: 24, lpStartTc: '01:00:00:00' });
+    assertEq('understated dim: markers now detected (1 reel)', built.intervals.length, 1);
+
+    // End-to-end through a workbook with the bad dimension → must not throw.
+    const wb2 = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb2, ws, 'QC Report');
+    const out = processWorkbook(wb2, { sheetName: 'QC Report', fps: 24, lpStartTc: '01:00:00:00' });
+    assertEq('understated dim: processWorkbook produces output sheet',
+      out.SheetNames[0], 'QC Report LongPlay');
+  })();
 });
 </script>
 </body>

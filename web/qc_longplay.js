@@ -234,6 +234,42 @@
     return out;
   }
 
+  // Compute the true used range of a worksheet from its actual cell addresses,
+  // taking the union with the declared '!ref'. Some exports (e.g. these QC
+  // reports) declare a too-small <dimension>, e.g. "A1:M87" while real data
+  // runs to row 359; reading by the declared range would silently drop every
+  // row below it (and with it all the reel markers).
+  function fullSheetRange(sheet) {
+    const ADDR = /^([A-Z]+)(\d+)$/;
+    let endR = 0, endC = 0;
+    if (sheet['!ref']) {
+      const dr = XLSX.utils.decode_range(sheet['!ref']);
+      endR = dr.e.r;
+      endC = dr.e.c;
+    }
+    for (const k in sheet) {
+      if (k[0] === '!') continue;
+      const m = ADDR.exec(k);
+      if (!m) continue;
+      const r = parseInt(m[2], 10) - 1;
+      const c = XLSX.utils.decode_col(m[1]);
+      if (r > endR) endR = r;
+      if (c > endC) endC = c;
+    }
+    return XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: endR, c: endC } });
+  }
+
+  // Read a worksheet to a row-major array of arrays, reading the full used
+  // range (not just the possibly-understated declared dimension).
+  function sheetToRows(sheet) {
+    if (typeof XLSX === 'undefined') {
+      throw new Error('SheetJS (XLSX) is not loaded. Make sure vendor/xlsx.full.min.js is included.');
+    }
+    return XLSX.utils.sheet_to_json(sheet, {
+      header: 1, raw: false, defval: null, range: fullSheetRange(sheet),
+    });
+  }
+
   function processWorkbook(workbook, opts) {
     opts = opts || {};
     const sheetName = opts.sheetName != null ? opts.sheetName : 'QC Report';
@@ -251,7 +287,7 @@
     }
 
     const sheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: null });
+    const rows = sheetToRows(sheet);
     const converted = processRows(rows, { fps, lpStartTc, dropMarkers });
 
     const newSheet = XLSX.utils.aoa_to_sheet(converted);
@@ -269,5 +305,7 @@
     convertTc,
     processRows,
     processWorkbook,
+    fullSheetRange,
+    sheetToRows,
   };
 })(window);

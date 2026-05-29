@@ -183,9 +183,10 @@
 
       const newWorkbook = QCLongPlay.processWorkbook(workbook, opts);
 
-      // Pull intervals back out for the summary table
+      // Pull intervals back out for the summary table (same full-range read
+      // as processWorkbook, so an understated sheet dimension can't drop rows).
       const sourceSheet = workbook.Sheets[opts.sheetName];
-      const sourceRows = XLSX.utils.sheet_to_json(sourceSheet, { header: 1, raw: false, defval: null });
+      const sourceRows = QCLongPlay.sheetToRows(sourceSheet);
       const built = QCLongPlay.buildIntervals(sourceRows, { fps: opts.fps, lpStartTc: opts.lpStartTc });
 
       convertedWorkbook = newWorkbook;
