@@ -5,6 +5,8 @@
   const fileInfoText = document.getElementById('file-info-text');
   const changeFileBtn = document.getElementById('change-file');
   const convertBtn = document.getElementById('convert-btn');
+  const resetBtn = document.getElementById('reset-btn');
+  const warningPanel = document.getElementById('warning-panel');
   const statusPanel = document.getElementById('status-panel');
   const statusMessage = document.getElementById('status-message');
   const statusDetails = document.getElementById('status-details');
@@ -37,7 +39,9 @@
     fileInfo.hidden = false;
     dropzone.hidden = true;
     convertBtn.disabled = false;
+    resetBtn.hidden = false;
     hideStatus();
+    hideWarnings();
     downloadBtn.hidden = true;
   }
 
@@ -49,8 +53,19 @@
     fileInfo.hidden = true;
     dropzone.hidden = false;
     convertBtn.disabled = true;
+    resetBtn.hidden = true;
     hideStatus();
+    hideWarnings();
     downloadBtn.hidden = true;
+  }
+
+  // Reset advanced options back to their defaults.
+  function resetAdvanced() {
+    sheetNameInput.value = 'QC Report';
+    fpsSelect.value = '24';
+    lpStartInput.value = '01:00:00:00';
+    keepMarkersInput.checked = false;
+    lpStartError.hidden = true;
   }
 
   function showStatus(kind, message) {
@@ -65,6 +80,25 @@
     statusPanel.classList.remove('visible', 'success', 'error');
     statusMessage.textContent = '';
     statusDetails.innerHTML = '';
+  }
+
+  function showWarnings(list) {
+    if (!list || !list.length) { hideWarnings(); return; }
+    const items = list.map(w => `<li>${escapeHtml(w)}</li>`).join('');
+    warningPanel.innerHTML =
+      `<p class="warning-title">Warning</p><ul>${items}</ul>`;
+    warningPanel.classList.add('visible');
+  }
+
+  function hideWarnings() {
+    warningPanel.classList.remove('visible');
+    warningPanel.innerHTML = '';
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   }
 
   function renderIntervals(intervals, fps) {
@@ -114,6 +148,10 @@
     if (fileInput.files[0]) setFile(fileInput.files[0]);
   });
   changeFileBtn.addEventListener('click', clearFile);
+  resetBtn.addEventListener('click', () => {
+    clearFile();
+    resetAdvanced();
+  });
   lpStartInput.addEventListener('input', () => {
     if (!lpStartError.hidden) validateLpStart();
   });
@@ -154,11 +192,13 @@
       const stem = selectedFile.name.replace(/\.xlsx$/i, '');
       outputFilename = `${stem}_LongPlay.xlsx`;
 
+      showWarnings(built.warnings);
       showStatus('success', `Done. ${built.intervals.length} reel(s) detected.`);
       const summary = '<p class="intervals-summary">Reel breakdown:</p>';
       statusDetails.innerHTML = summary + renderIntervals(built.intervals, opts.fps);
       downloadBtn.hidden = false;
     } catch (err) {
+      hideWarnings();
       showStatus('error', err && err.message ? err.message : String(err));
       convertedWorkbook = null;
       outputFilename = null;

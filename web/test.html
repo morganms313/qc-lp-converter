@@ -187,6 +187,60 @@ runTests(function () {
   assertEq('out-of-order: reel 1 lpStart', rReorder.intervals[0].lpStart, 3600);
   assertEq('out-of-order: reel 2 lpStart = 3600 + 600', rReorder.intervals[1].lpStart, 4200);
 
+  // Normal builds expose an empty warnings array
+  assertEq('normal build: warnings empty', r1.warnings, []);
+  assertEq('multi build: warnings empty', r3.warnings, []);
+
+  // Missing-boundary fallback: last reel with no Program End marker
+  // infers its end from the last timecode in the sheet and warns.
+  const lastReelNoEnd = [
+    [null, null, null, 'Header'],
+    [null, '01:00:00:00', null, 'Program Start - Reel 1'],
+    [null, '01:05:00:00', null, 'note in reel 1'],
+    [null, '01:10:00:00', null, 'Program End - Reel 1'],
+    [null, '02:00:00:00', null, 'Program Start - Reel 2'],
+    [null, '02:03:00:00', null, 'note in reel 2'],
+    [null, '02:05:00:00', null, 'last tc, no end marker'],
+  ];
+  const rFallback = buildIntervals(lastReelNoEnd, { fps: 24, lpStartTc: '01:00:00:00' });
+  assertEq('fallback: 2 intervals built', rFallback.intervals.length, 2);
+  assertEq('fallback: reel 2 end inferred = 02:05:00:00 (7500s)',
+    rFallback.intervals[1].reelEnd, 7500);
+  assertEq('fallback: reel 2 duration 300s', rFallback.intervals[1].duration, 300);
+  assertEq('fallback: one warning', rFallback.warnings.length, 1);
+  assert('fallback: warning names reel 2',
+    rFallback.warnings[0].includes('Reel 2'), rFallback.warnings[0]);
+  assert('fallback: warning cites inferred tc 02:05:00:00',
+    rFallback.warnings[0].includes('02:05:00:00'), rFallback.warnings[0]);
+
+  // Missing-boundary fallback: lastEnd extends to the inferred end row
+  assertEq('fallback: lastEnd = inferred tc row (6)', rFallback.lastEnd, 6);
+
+  // Middle reel missing its end marker → clear, actionable error (no inference)
+  const middleReelNoEnd = [
+    [null, null, null, 'Header'],
+    [null, '01:00:00:00', null, 'Program Start - Reel 1'],
+    [null, '02:00:00:00', null, 'Program Start - Reel 2'],
+    [null, '02:05:00:00', null, 'Program End - Reel 2'],
+  ];
+  assertThrows('middle reel missing end: throws',
+    () => buildIntervals(middleReelNoEnd, { fps: 24, lpStartTc: '01:00:00:00' }),
+    "missing its 'Program End - Reel 1' marker");
+  assertThrows('middle reel missing end: states expected format',
+    () => buildIntervals(middleReelNoEnd, { fps: 24, lpStartTc: '01:00:00:00' }),
+    "timecode (HH:MM:SS:FF) in column 2");
+
+  // processWorkbook tolerates an inferred last-reel end (does not throw)
+  (function () {
+    const ws = XLSX.utils.aoa_to_sheet(lastReelNoEnd);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'QC Report');
+    let threw = false;
+    try { QCLongPlay.processWorkbook(wb, { sheetName: 'QC Report', fps: 24, lpStartTc: '01:00:00:00' }); }
+    catch (e) { threw = true; }
+    assert('processWorkbook: inferred last-reel end does not throw', !threw);
+  })();
+
   // convertTc
   const { convertTc } = QCLongPlay;
   const cMulti = buildIntervals(makeRows([

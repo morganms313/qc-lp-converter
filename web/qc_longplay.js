@@ -82,24 +82,80 @@
       throw new Error(`Invalid LP start TC: ${lpStartTc}`);
     }
 
+    // Find the last parseable timecode in the TC column (scanning bottom-up),
+    // used to infer a missing end boundary for the final reel.
+    function lastTcInfo() {
+      for (let i = rows.length - 1; i >= 0; i--) {
+        const row = rows[i] || [];
+        const v = row[tcCol];
+        if (typeof v === 'string' && tcToSeconds(v, fps) !== null) {
+          return { tc: v, row: i };
+        }
+      }
+      return null;
+    }
+
+    const expectedBoundaryMsg = (r) =>
+      `Expected a row with 'Program End - Reel ${r}' in column 4 ` +
+      `and a timecode (HH:MM:SS:FF) in column 2.`;
+
+    const warnings = [];
     const intervals = [];
     const sortedReels = Object.keys(reelBounds).map(Number).sort((a, b) => a - b);
+    const lastReel = sortedReels[sortedReels.length - 1];
+
     for (const r of sortedReels) {
       const rs = tcToSeconds(reelBounds[r].startTc, fps);
-      const re = tcToSeconds(reelBounds[r].endTc, fps);
-      if (rs === null || re === null) {
-        throw new Error(`Invalid timecode for Reel ${r} boundaries.`);
+      if (rs === null) {
+        throw new Error(
+          `Reel ${r} has no valid 'Program Start - Reel ${r}' timecode ` +
+          `(HH:MM:SS:FF in column 2).`
+        );
       }
+
+      let re = tcToSeconds(reelBounds[r].endTc, fps);
+      if (re === null) {
+        // Missing or unparseable Program End marker.
+        if (r === lastReel) {
+          // Last reel: fall back to the last timecode in the sheet, with a warning.
+          const info = lastTcInfo();
+          const inferred = info ? tcToSeconds(info.tc, fps) : null;
+          if (info === null || inferred === null || inferred <= rs) {
+            throw new Error(
+              `Reel ${r} is missing its 'Program End - Reel ${r}' marker and no ` +
+              `usable timecode was found after its start to infer the end. ` +
+              expectedBoundaryMsg(r)
+            );
+          }
+          re = inferred;
+          reelBounds[r].endRow = info.row; // so the slice extends to the inferred end
+          warnings.push(
+            `Reel ${r} had no valid 'Program End - Reel ${r}' marker — used the ` +
+            `last timecode in the sheet (${info.tc}) as its end. Verify this is correct.`
+          );
+        } else {
+          // Middle reel: cannot safely infer. Fail with a clear, actionable message.
+          throw new Error(
+            `Reel ${r} is missing its 'Program End - Reel ${r}' marker. ` +
+            expectedBoundaryMsg(r)
+          );
+        }
+      }
+
       const dur = re - rs;
       intervals.push({ reel: r, reelStart: rs, reelEnd: re, lpStart: lpCursor, duration: dur });
       lpCursor += dur;
     }
 
     const allBounds = Object.values(reelBounds);
-    const firstStart = Math.min.apply(null, allBounds.map(b => b.startRow));
-    const lastEnd = Math.max.apply(null, allBounds.map(b => b.endRow));
+    const startRows = allBounds.map(b => b.startRow).filter(x => x != null);
+    const endRows = allBounds.map(b => b.endRow).filter(x => x != null);
+    const firstStart = Math.min.apply(null, startRows);
+    const lastEnd = endRows.length
+      ? Math.max.apply(null, endRows)
+      : Math.max.apply(null, startRows);
 
-    return { intervals, firstStart, lastEnd };
+    return { intervals, firstStart, lastEnd, warnings };
   }
 
   function convertTc(tcStr, intervals, fps) {

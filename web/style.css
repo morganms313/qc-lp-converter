@@ -1,63 +1,89 @@
 :root {
-  --bg: #0E1014;
-  --surface: #181B22;
-  --border: #272B35;
-  --text: #E6E8EC;
-  --muted: #8A91A0;
-  --accent: #E5A93A;
-  --accent-hover: #F4BC4E;
-  --success: #5DBE8A;
-  --error: #E8635A;
-  --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
+  --bg: #181818;
+  --panel: #25242a;
+  --border: #353f3f;
+  --text: #e8e8ea;
+  --muted: #a9a9b2;
+  --accent: #38bdf8;   /* Pixelogic blue */
+  --good: #22c55e;     /* green */
+  --warn: #f59e0b;     /* amber */
+  --error: #ef4444;    /* red */
+  --focus: rgba(56, 189, 248, .25);
+  --radius: 14px;
+  --shadow: 0 10px 30px rgba(0, 0, 0, .35);
+  --font-ui: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
+* { font-family: var(--font-ui); }
 html, body { margin: 0; padding: 0; }
+
+/* The hidden attribute must win over component display rules (e.g. .file-info
+   uses display:flex, which would otherwise override [hidden]). */
+[hidden] { display: none !important; }
+
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-ui);
-  font-size: 15px;
-  line-height: 1.5;
+  padding: 28px 20px;
   min-height: 100vh;
   display: flex;
   justify-content: center;
+  align-items: flex-start;
+  background: radial-gradient(circle at center, #2b2b30 0%, #34343a 45%, #404047 70%, #4b4b52 100%);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.5;
 }
 
-main {
+.container {
+  background: rgba(37, 36, 42, .92);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 28px 34px 22px;
+  max-width: 680px;
   width: 100%;
-  max-width: 640px;
-  padding: 48px 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-header { margin-bottom: 8px; }
+/* ---------- Logos ---------- */
+.logo-top { text-align: center; }
+.logo-top svg { max-width: 150px; width: 100%; height: auto; }
+
+.footer { text-align: center; margin-top: 8px; border-top: 1px solid var(--border); padding-top: 18px; }
+.logo-footer svg { max-width: 220px; width: 100%; height: auto; opacity: .85; }
+.footer-note { color: var(--muted); font-size: 12px; margin-top: 6px; }
+.footer-note.build-note { font-size: 11px; opacity: .75; margin-top: 2px; }
+
+/* ---------- Header ---------- */
+header { text-align: center; margin-bottom: 2px; }
 header h1 {
-  font-size: 28px;
+  font-size: 1.7em;
   font-weight: 600;
   margin: 0 0 6px;
   letter-spacing: -0.01em;
 }
-header p {
+header .subtitle {
   margin: 0;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 0.9em;
 }
 
+/* ---------- Cards ---------- */
 .card {
-  background: var(--surface);
+  background: rgba(24, 24, 24, .35);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px 24px;
+  border-radius: var(--radius);
+  padding: 16px 18px;
 }
 
+/* ---------- Dropzone ---------- */
 .dropzone {
-  background: var(--surface);
-  border: 2px dashed #3A4050;
-  border-radius: 12px;
+  background: rgba(24, 24, 24, .35);
+  border: 2px dashed #4a5258;
+  border-radius: var(--radius);
   padding: 40px 24px;
   text-align: center;
   cursor: pointer;
@@ -66,7 +92,7 @@ header p {
 .dropzone:hover { border-color: var(--muted); }
 .dropzone.dragover {
   border-color: var(--accent);
-  background: rgba(229, 169, 58, 0.08);
+  background: rgba(56, 189, 248, 0.08);
 }
 .dropzone-text {
   font-size: 16px;
@@ -80,6 +106,7 @@ header p {
   pointer-events: none;
 }
 
+/* ---------- File info ---------- */
 .file-info {
   display: flex;
   align-items: center;
@@ -96,9 +123,13 @@ header p {
   padding: 0;
 }
 .file-info .change-link:hover {
-  color: var(--accent-hover);
+  color: var(--text);
   text-decoration: underline;
 }
+
+/* ---------- Buttons ---------- */
+.button-row { display: flex; gap: 12px; }
+.button-row .btn-primary { flex: 1; }
 
 .btn {
   font-family: inherit;
@@ -112,12 +143,12 @@ header p {
 }
 .btn-primary {
   background: var(--accent);
-  color: #1A1300;
+  color: #04222e;
   border-color: var(--accent);
 }
 .btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
-  border-color: var(--accent-hover);
+  background: #5cc9fa;
+  border-color: #5cc9fa;
 }
 .btn-primary:disabled {
   background: var(--border);
@@ -125,15 +156,48 @@ header p {
   color: var(--muted);
   cursor: not-allowed;
 }
+.btn-secondary {
+  background: transparent;
+  color: var(--muted);
+  border-color: var(--border);
+}
+.btn-secondary:hover {
+  color: var(--text);
+  border-color: var(--muted);
+}
 
-.status-panel { display: none; }
+/* ---------- Warning panel ---------- */
+.warning-panel {
+  display: none;
+  background: rgba(245, 158, 11, 0.10);
+  border-color: rgba(245, 158, 11, 0.45);
+  border-left: 4px solid var(--warn);
+}
+.warning-panel.visible { display: block; }
+.warning-panel .warning-title {
+  color: var(--warn);
+  font-weight: 600;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 8px;
+}
+.warning-panel ul { margin: 0; padding-left: 18px; }
+.warning-panel li { font-size: 14px; margin-bottom: 4px; }
+.warning-panel li:last-child { margin-bottom: 0; }
+
+/* ---------- Status panel ---------- */
+.status-panel { display: none; border-left: 4px solid var(--border); }
 .status-panel.visible { display: block; }
-.status-panel.success { border-color: rgba(93, 190, 138, 0.4); }
-.status-panel.error { border-color: rgba(232, 99, 90, 0.5); }
+.status-panel.success { border-left-color: var(--good); border-color: rgba(34, 197, 94, 0.4); }
+.status-panel.error { border-left-color: var(--error); border-color: rgba(239, 68, 68, 0.5); }
 
-.status-message { margin: 0 0 12px; font-size: 14px; font-weight: 500; }
-.status-message.success { color: var(--success); }
+.status-message { margin: 0; font-size: 14px; font-weight: 500; }
+.status-message:not(:empty) ~ #status-details:not(:empty) { margin-top: 12px; }
+.status-message.success { color: var(--good); }
 .status-message.error { color: var(--error); }
+#status-details:empty { display: none; }
+#status-details { margin-top: 12px; }
 
 .intervals-summary {
   color: var(--muted);
@@ -141,6 +205,7 @@ header p {
   margin: 0 0 8px;
 }
 
+/* ---------- Intervals table ---------- */
 .interval-table {
   width: 100%;
   border-collapse: collapse;
@@ -163,10 +228,10 @@ header p {
   letter-spacing: 0.04em;
 }
 
+/* ---------- Advanced settings ---------- */
 details {
   border-top: 1px solid var(--border);
   padding-top: 8px;
-  margin-top: 8px;
 }
 details summary {
   cursor: pointer;
@@ -188,10 +253,10 @@ details summary:hover { color: var(--text); }
 details[open] summary { color: var(--text); margin-bottom: 12px; }
 
 .advanced-body {
-  background: var(--surface);
+  background: rgba(24, 24, 24, .35);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px 24px;
+  border-radius: var(--radius);
+  padding: 16px 18px;
 }
 
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
@@ -199,6 +264,7 @@ details[open] summary { color: var(--text); margin-bottom: 12px; }
 .field label {
   font-size: 13px;
   color: var(--muted);
+  font-weight: 600;
 }
 .field input[type="text"],
 .field select {
@@ -215,12 +281,10 @@ details[open] summary { color: var(--text); margin-bottom: 12px; }
 .field select:focus {
   outline: none;
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus);
 }
 
-.field-row {
-  display: flex;
-  gap: 12px;
-}
+.field-row { display: flex; gap: 12px; }
 .field-row .field { flex: 1; }
 
 .checkbox-field {
@@ -234,6 +298,7 @@ details[open] summary { color: var(--text); margin-bottom: 12px; }
   color: var(--text);
   font-size: 14px;
   margin: 0;
+  font-weight: 400;
 }
 
 .field-error {
